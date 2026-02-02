@@ -5,108 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>পেমেন্ট বট সিস্টেম</title>
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-        
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvzDVl5CCA-K3WX2NaNBzHYNi055K0t8k",
-            authDomain: "payment-bot-system.firebaseapp.com",
-            projectId: "payment-bot-system",
-            storageBucket: "payment-bot-system.firebasestorage.app",
-            messagingSenderId: "157613986294",
-            appId: "1:157613986294:web:04497dc2f31d107bf437d7",
-            measurementId: "G-X7SNQ4WQD8"
-        };
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Make Firebase available globally
-        window.firebase = {
-            auth,
-            db,
-            firestore: {
-                collection,
-                addDoc,
-                getDocs,
-                query,
-                where,
-                doc,
-                setDoc,
-                getDoc,
-                serverTimestamp,
-                createUserWithEmailAndPassword,
-                signInWithEmailAndPassword,
-                signOut,
-                onAuthStateChanged,
-                updateProfile
-            }
-        };
-        
-        // Hide loading and initialize app
-        window.firebaseReady = true;
-        document.getElementById('firebaseLoading').style.display = 'none';
-        initializeApp();
-        
-        async function initializeApp() {
-            // Set up auth state listener
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    // User is signed in
-                    window.currentUser = {
-                        id: user.uid,
-                        email: user.email,
-                        name: user.displayName || "",
-                        avatarText: getInitials(user.displayName || user.email)
-                    };
-                    
-                    // Load additional user data from Firestore
-                    await loadUserData(user.uid);
-                    
-                    showMainMenu();
-                } else {
-                    // User is signed out
-                    window.currentUser = null;
-                    showAuthPage();
-                }
-            });
-        }
-        
-        function getInitials(name) {
-            return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
-        }
-        
-        async function loadUserData(userId) {
-            try {
-                const userDoc = await getDoc(doc(db, "users", userId));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    window.currentUser = {
-                        ...window.currentUser,
-                        ...userData
-                    };
-                }
-                
-                // Update UI
-                if (document.getElementById('welcomeMessage')) {
-                    document.getElementById('welcomeMessage').textContent = 'স্বাগতম, ' + window.currentUser.name;
-                }
-                if (document.getElementById('userAvatar')) {
-                    document.getElementById('userAvatar').textContent = window.currentUser.avatarText;
-                }
-            } catch (error) {
-                console.error("Error loading user data:", error);
-            }
-        }
-    </script>
+    <!-- Firebase Legacy SDK (Compatible Version) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     
     <style>
+        /* Firebase লোডিং স্টাইল */
+        .firebase-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .loading-subtext {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+        
+        .error-message {
+            display: none;
+            color: #ff6b6b;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .retry-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Main Container (hidden by default) */
+        .main-container {
+            display: none;
+        }
+        
         /* General Styles */
         * {
             margin: 0;
@@ -125,30 +98,6 @@
         .container {
             max-width: 500px;
             margin: 0 auto;
-        }
-
-        /* Firebase Loading */
-        .firebase-loading {
-            text-align: center;
-            padding: 50px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            margin-top: 100px;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
 
         /* Header */
@@ -784,425 +733,430 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Firebase Loading -->
-        <div id="firebaseLoading" class="firebase-loading">
-            <div class="loading-spinner"></div>
-            <h3>Firebase লোড হচ্ছে...</h3>
-            <p>অপেক্ষা করুন, সিস্টেম প্রস্তুত হচ্ছে</p>
-        </div>
+    <!-- Firebase Loading Screen -->
+    <div id="firebaseLoading" class="firebase-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Firebase লোড হচ্ছে...</div>
+        <div class="loading-subtext">অপেক্ষা করুন, সিস্টেম প্রস্তুত হচ্ছে</div>
+        <div id="errorMessage" class="error-message"></div>
+        <button id="retryBtn" class="retry-btn" style="display: none;">পুনরায় চেষ্টা করুন</button>
+    </div>
 
-        <!-- Authentication Pages -->
-        <div id="authPage" class="auth-container">
-            <div class="auth-tabs">
-                <div class="auth-tab active" onclick="switchAuthTab('signin')">সাইন ইন</div>
-                <div class="auth-tab" onclick="switchAuthTab('signup')">সাইন আপ</div>
-            </div>
-
-            <!-- Sign In Form -->
-            <div id="signinForm" class="auth-form active">
-                <div class="form-group">
-                    <label for="signinEmail">ইমেইল:</label>
-                    <input type="email" id="signinEmail" class="form-control" placeholder="আপনার ইমেইল লিখুন">
+    <!-- Main Application Container -->
+    <div id="mainApp" class="main-container">
+        <div class="container">
+            <!-- Authentication Pages -->
+            <div id="authPage" class="auth-container">
+                <div class="auth-tabs">
+                    <div class="auth-tab active" onclick="switchAuthTab('signin')">সাইন ইন</div>
+                    <div class="auth-tab" onclick="switchAuthTab('signup')">সাইন আপ</div>
                 </div>
 
-                <div class="form-group">
-                    <label for="signinPassword">পাসওয়ার্ড:</label>
-                    <input type="password" id="signinPassword" class="form-control" placeholder="আপনার পাসওয়ার্ড লিখুন">
-                </div>
-
-                <button class="btn" onclick="signIn()">
-                    সাইন ইন <i class="fas fa-sign-in-alt"></i>
-                </button>
-
-                <p style="text-align: center; margin-top: 20px; color: #7f8c8d;">
-                    নতুন ব্যবহারকারী? <a href="#" onclick="switchAuthTab('signup')" style="color: #3498db; text-decoration: none;">এখানে সাইন আপ করুন</a>
-                </p>
-            </div>
-
-            <!-- Sign Up Form -->
-            <div id="signupForm" class="auth-form">
-                <div class="form-group">
-                    <label for="signupName">পূর্ণ নাম:</label>
-                    <input type="text" id="signupName" class="form-control" placeholder="আপনার পূর্ণ নাম লিখুন">
-                </div>
-
-                <div class="form-group">
-                    <label for="signupEmail">ইমেইল:</label>
-                    <input type="email" id="signupEmail" class="form-control" placeholder="আপনার ইমেইল লিখুন">
-                </div>
-
-                <div class="form-group">
-                    <label for="signupPhone">ফোন নম্বর:</label>
-                    <input type="text" id="signupPhone" class="form-control" placeholder="আপনার ফোন নম্বর লিখুন">
-                </div>
-
-                <div class="form-group">
-                    <label for="signupPassword">পাসওয়ার্ড:</label>
-                    <input type="password" id="signupPassword" class="form-control" placeholder="একটি শক্তিশালী পাসওয়ার্ড লিখুন">
-                </div>
-
-                <div class="form-group">
-                    <label for="signupConfirmPassword">পাসওয়ার্ড নিশ্চিত করুন:</label>
-                    <input type="password" id="signupConfirmPassword" class="form-control" placeholder="পাসওয়ার্ড আবার লিখুন">
-                </div>
-
-                <button class="btn" onclick="signUp()">
-                    সাইন আপ <i class="fas fa-user-plus"></i>
-                </button>
-
-                <p style="text-align: center; margin-top: 20px; color: #7f8c8d;">
-                    ইতিমধ্যে অ্যাকাউন্ট আছে? <a href="#" onclick="switchAuthTab('signin')" style="color: #3498db; text-decoration: none;">এখানে সাইন ইন করুন</a>
-                </p>
-            </div>
-        </div>
-
-        <!-- Main Menu (Shown after login) -->
-        <div id="mainMenu" class="step-container">
-            <header>
-                <div class="user-menu" id="userMenu">
-                    <div class="user-avatar" onclick="showUserProfile()" id="userAvatar">
-                        <!-- Avatar will be set by JavaScript -->
+                <!-- Sign In Form -->
+                <div id="signinForm" class="auth-form active">
+                    <div class="form-group">
+                        <label for="signinEmail">ইমেইল:</label>
+                        <input type="email" id="signinEmail" class="form-control" placeholder="আপনার ইমেইল লিখুন">
                     </div>
-                    <button class="logout-btn" onclick="logout()">
-                        <i class="fas fa-sign-out-alt"></i> লগআউট
+
+                    <div class="form-group">
+                        <label for="signinPassword">পাসওয়ার্ড:</label>
+                        <input type="password" id="signinPassword" class="form-control" placeholder="আপনার পাসওয়ার্ড লিখুন">
+                    </div>
+
+                    <button class="btn" onclick="signIn()">
+                        সাইন ইন <i class="fas fa-sign-in-alt"></i>
+                    </button>
+
+                    <p style="text-align: center; margin-top: 20px; color: #7f8c8d;">
+                        নতুন ব্যবহারকারী? <a href="#" onclick="switchAuthTab('signup')" style="color: #3498db; text-decoration: none;">এখানে সাইন আপ করুন</a>
+                    </p>
+                </div>
+
+                <!-- Sign Up Form -->
+                <div id="signupForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="signupName">পূর্ণ নাম:</label>
+                        <input type="text" id="signupName" class="form-control" placeholder="আপনার পূর্ণ নাম লিখুন">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupEmail">ইমেইল:</label>
+                        <input type="email" id="signupEmail" class="form-control" placeholder="আপনার ইমেইল লিখুন">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupPhone">ফোন নম্বর:</label>
+                        <input type="text" id="signupPhone" class="form-control" placeholder="আপনার ফোন নম্বর লিখুন">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupPassword">পাসওয়ার্ড:</label>
+                        <input type="password" id="signupPassword" class="form-control" placeholder="একটি শক্তিশালী পাসওয়ার্ড লিখুন">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="signupConfirmPassword">পাসওয়ার্ড নিশ্চিত করুন:</label>
+                        <input type="password" id="signupConfirmPassword" class="form-control" placeholder="পাসওয়ার্ড আবার লিখুন">
+                    </div>
+
+                    <button class="btn" onclick="signUp()">
+                        সাইন আপ <i class="fas fa-user-plus"></i>
+                    </button>
+
+                    <p style="text-align: center; margin-top: 20px; color: #7f8c8d;">
+                        ইতিমধ্যে অ্যাকাউন্ট আছে? <a href="#" onclick="switchAuthTab('signin')" style="color: #3498db; text-decoration: none;">এখানে সাইন ইন করুন</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Main Menu (Shown after login) -->
+            <div id="mainMenu" class="step-container">
+                <header>
+                    <div class="user-menu" id="userMenu">
+                        <div class="user-avatar" onclick="showUserProfile()" id="userAvatar">
+                            U
+                        </div>
+                        <button class="logout-btn" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> লগআউট
+                        </button>
+                    </div>
+                    <div class="header-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h1>পেমেন্ট বট সিস্টেম</h1>
+                    <p class="subtitle" id="welcomeMessage">একটি কমান্ড নির্বাচন করুন</p>
+                </header>
+
+                <div class="commands-container">
+                    <!-- Volet to BDT Card -->
+                    <div class="command-card" onclick="showStep('voletStep1')">
+                        <div class="command-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <h3>Volet to BDT</h3>
+                        <p>Volet থেকে বাংলাদেশি টাকা কনভার্ট করুন</p>
+                        <div class="click-indicator">ক্লিক করুন</div>
+                    </div>
+
+                    <!-- USDT to BDT Card -->
+                    <div class="command-card" onclick="showNotification('এই ফিচারটি শীঘ্রই আসছে!', 'info')">
+                        <div class="command-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3>USDT to BDT</h3>
+                        <p>USDT থেকে বাংলাদেশি টাকা কনভার্ট করুন</p>
+                        <div class="coming-soon">শীঘ্রই আসছে</div>
+                    </div>
+
+                    <!-- Customer Care Card -->
+                    <div class="command-card" onclick="showStep('customerCare')">
+                        <div class="command-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h3>Customer Care</h3>
+                        <p>আমাদের সাপোর্ট টিমের সাথে যোগাযোগ করুন</p>
+                        <div class="click-indicator">ক্লিক করুন</div>
+                    </div>
+
+                    <!-- History Card -->
+                    <div class="command-card" onclick="showHistory()">
+                        <div class="command-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h3>Withdraw History</h3>
+                        <p>আপনার পূর্বের উইথড্র গুলো দেখুন</p>
+                        <div class="click-indicator">ক্লিক করুন</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other steps (Volet to BDT, History, etc.) -->
+            <!-- Volet to BDT - Step 1: Account Details -->
+            <div id="voletStep1" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('mainMenu')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">Volet to BDT</div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-step active">
+                        <div class="step-circle">1</div>
+                        <div class="step-text">অ্যাকাউন্ট কপি</div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="step-circle">2</div>
+                        <div class="step-text">বিস্তারিত দিন</div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="step-circle">3</div>
+                        <div class="step-text">উইথড্র</div>
+                    </div>
+                </div>
+
+                <div class="account-section">
+                    <div class="account-label">USD পাঠান এই অ্যাকাউন্টে:</div>
+                    <div class="account-number" onclick="copyAccountNumber()" id="accountNumber">
+                        U 0855 2881 9707
+                    </div>
+                    <div class="copy-text">অ্যাকাউন্ট নম্বর কপি করুন</div>
+                </div>
+
+                <p style="text-align: center; margin-bottom: 25px; color: #7f8c8d;">
+                    উপরের অ্যাকাউন্টে USD পাঠানোর পর নিচের বাটনে ক্লিক করুন
+                </p>
+
+                <button class="btn" onclick="showStep('voletStep2')">
+                    Next Step <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <button class="btn btn-history" onclick="showHistory()">
+                    <i class="fas fa-history"></i> History দেখুন
+                </button>
+            </div>
+
+            <!-- Volet to BDT - Step 2: Transaction Details -->
+            <div id="voletStep2" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('voletStep1')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">লেনদেনের বিস্তারিত</div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-step completed">
+                        <div class="step-circle"><i class="fas fa-check"></i></div>
+                        <div class="step-text">অ্যাকাউন্ট কপি</div>
+                    </div>
+                    <div class="progress-step active">
+                        <div class="step-circle">2</div>
+                        <div class="step-text">বিস্তারিত দিন</div>
+                    </div>
+                    <div class="progress-step">
+                        <div class="step-circle">3</div>
+                        <div class="step-text">উইথড্র</div>
+                    </div>
+                </div>
+
+                <form id="transactionForm" onsubmit="submitTransaction(event)">
+                    <div class="form-group">
+                        <label for="usdAmount">USD Amount:</label>
+                        <input type="number" id="usdAmount" class="form-control" placeholder="USD পরিমাণ লিখুন" required step="0.01" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="voletNumber">Your Volet:</label>
+                        <input type="text" id="voletNumber" class="form-control" placeholder="আপনার Volet নম্বর লিখুন" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="trxnId">Transaction ID:</label>
+                        <input type="text" id="trxnId" class="form-control" placeholder="লেনদেন আইডি লিখুন" required>
+                    </div>
+
+                    <button type="submit" class="btn">
+                        Submit <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Volet to BDT - Step 3: Withdraw Details -->
+            <div id="voletStep3" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('voletStep2')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">উইথড্র করার তথ্য</div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-step completed">
+                        <div class="step-circle"><i class="fas fa-check"></i></div>
+                        <div class="step-text">অ্যাকাউন্ট কপি</div>
+                    </div>
+                    <div class="progress-step completed">
+                        <div class="step-circle"><i class="fas fa-check"></i></div>
+                        <div class="step-text">বিস্তারিত দিন</div>
+                    </div>
+                    <div class="progress-step active">
+                        <div class="step-circle">3</div>
+                        <div class="step-text">উইথড্র</div>
+                    </div>
+                </div>
+
+                <!-- Transaction Summary -->
+                <div class="data-display" id="transactionSummary">
+                    <!-- Data will be loaded here by JavaScript -->
+                </div>
+
+                <form id="withdrawForm" onsubmit="submitWithdraw(event)">
+                    <div class="form-group">
+                        <label>Write Bkash/Nagad/Rocket:</label>
+                        <select id="paymentMethod" class="form-control" required>
+                            <option value="">পেমেন্ট মেথড নির্বাচন করুন</option>
+                            <option value="Bkash">Bkash</option>
+                            <option value="Nagad">Nagad</option>
+                            <option value="Rocket">Rocket</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Give your number:</label>
+                        <input type="text" id="paymentNumber" class="form-control" placeholder="আপনার মোবাইল নম্বর লিখুন" required pattern="[0-9]{11}" title="১১ ডিজিটের মোবাইল নম্বর লিখুন">
+                    </div>
+
+                    <button type="submit" class="btn btn-success">
+                        Successful <i class="fas fa-check-circle"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Volet to BDT - Success Message -->
+            <div id="successMessage" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('mainMenu')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">সফল!</div>
+                </div>
+
+                <div style="text-align: center; padding: 50px 20px;">
+                    <div style="font-size: 80px; color: #2ecc71; margin-bottom: 20px;">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <h2 style="color: #2c3e50; margin-bottom: 15px;">Request Successfully Sent</h2>
+                    <p style="color: #7f8c8d; margin-bottom: 30px;">
+                        আপনার রিকোয়েস্ট সফলভাবে পাঠানো হয়েছে। আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।
+                    </p>
+                    
+                    <!-- Database Display -->
+                    <div class="data-display" id="databaseDisplay">
+                        <h3 style="color: #2c3e50; margin-bottom: 15px;">ডাটাবেসে সংরক্ষিত তথ্য:</h3>
+                        <div id="storedData">
+                            <!-- Data will be loaded here -->
+                        </div>
+                    </div>
+
+                    <button class="btn" onclick="showStep('mainMenu')" style="margin-top: 30px;">
+                        <i class="fas fa-home"></i> মেনুতে ফিরে যান
                     </button>
                 </div>
-                <div class="header-icon">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <h1>পেমেন্ট বট সিস্টেম</h1>
-                <p class="subtitle" id="welcomeMessage">একটি কমান্ড নির্বাচন করুন</p>
-            </header>
+            </div>
 
-            <div class="commands-container">
-                <!-- Volet to BDT Card -->
-                <div class="command-card" onclick="showStep('voletStep1')">
-                    <div class="command-icon">
-                        <i class="fas fa-exchange-alt"></i>
-                    </div>
-                    <h3>Volet to BDT</h3>
-                    <p>Volet থেকে বাংলাদেশি টাকা কনভার্ট করুন</p>
-                    <div class="click-indicator">ক্লিক করুন</div>
+            <!-- Customer Care -->
+            <div id="customerCare" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('mainMenu')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">গ্রাহক সেবা</div>
                 </div>
 
-                <!-- USDT to BDT Card -->
-                <div class="command-card" onclick="showNotification('এই ফিচারটি শীঘ্রই আসছে!', 'info')">
-                    <div class="command-icon">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <h3>USDT to BDT</h3>
-                    <p>USDT থেকে বাংলাদেশি টাকা কনভার্ট করুন</p>
-                    <div class="coming-soon">শীঘ্রই আসছে</div>
-                </div>
-
-                <!-- Customer Care Card -->
-                <div class="command-card" onclick="showStep('customerCare')">
-                    <div class="command-icon">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 60px; color: #3498db; margin-bottom: 20px;">
                         <i class="fas fa-headset"></i>
                     </div>
-                    <h3>Customer Care</h3>
-                    <p>আমাদের সাপোর্ট টিমের সাথে যোগাযোগ করুন</p>
-                    <div class="click-indicator">ক্লিক করুন</div>
+                    <h2 style="color: #2c3e50; margin-bottom: 10px;">আমাদের সাথে যোগাযোগ করুন</h2>
+                    <p style="color: #7f8c8d;">যেকোনো সমস্যা বা প্রশ্নের জন্য আমরা এখানে আছি</p>
                 </div>
 
-                <!-- History Card -->
-                <div class="command-card" onclick="showHistory()">
-                    <div class="command-icon">
-                        <i class="fas fa-history"></i>
+                <div class="customer-care-info">
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h4>ফোন নম্বর</h4>
+                            <p>+৮৮০ ১৭০০-১২৩৪৫৬</p>
+                        </div>
                     </div>
-                    <h3>Withdraw History</h3>
-                    <p>আপনার পূর্বের উইথড্র গুলো দেখুন</p>
-                    <div class="click-indicator">ক্লিক করুন</div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Volet to BDT - Step 1: Account Details -->
-        <div id="voletStep1" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('mainMenu')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">Volet to BDT</div>
-            </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h4>ইমেইল</h4>
+                            <p>support@paymentbot.com</p>
+                        </div>
+                    </div>
 
-            <div class="progress-bar">
-                <div class="progress-step active">
-                    <div class="step-circle">1</div>
-                    <div class="step-text">অ্যাকাউন্ট কপি</div>
-                </div>
-                <div class="progress-step">
-                    <div class="step-circle">2</div>
-                    <div class="step-text">বিস্তারিত দিন</div>
-                </div>
-                <div class="progress-step">
-                    <div class="step-circle">3</div>
-                    <div class="step-text">উইথড্র</div>
+                    <div class="contact-item">
+                        <div class="contact-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="contact-text">
+                            <h4>কাজের সময়</h4>
+                            <p>সকাল ৯টা - রাত ১১টা (সপ্তাহের ৭ দিন)</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="account-section">
-                <div class="account-label">USD পাঠান এই অ্যাকাউন্টে:</div>
-                <div class="account-number" onclick="copyAccountNumber()" id="accountNumber">
-                    U 0855 2881 9707
-                </div>
-                <div class="copy-text">অ্যাকাউন্ট নম্বর কপি করুন</div>
-            </div>
-
-            <p style="text-align: center; margin-bottom: 25px; color: #7f8c8d;">
-                উপরের অ্যাকাউন্টে USD পাঠানোর পর নিচের বাটনে ক্লিক করুন
-            </p>
-
-            <button class="btn" onclick="showStep('voletStep2')">
-                Next Step <i class="fas fa-arrow-right"></i>
-            </button>
-
-            <button class="btn btn-history" onclick="showHistory()">
-                <i class="fas fa-history"></i> History দেখুন
-            </button>
-        </div>
-
-        <!-- Volet to BDT - Step 2: Transaction Details -->
-        <div id="voletStep2" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('voletStep1')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">লেনদেনের বিস্তারিত</div>
-            </div>
-
-            <div class="progress-bar">
-                <div class="progress-step completed">
-                    <div class="step-circle"><i class="fas fa-check"></i></div>
-                    <div class="step-text">অ্যাকাউন্ট কপি</div>
-                </div>
-                <div class="progress-step active">
-                    <div class="step-circle">2</div>
-                    <div class="step-text">বিস্তারিত দিন</div>
-                </div>
-                <div class="progress-step">
-                    <div class="step-circle">3</div>
-                    <div class="step-text">উইথড্র</div>
-                </div>
-            </div>
-
-            <form id="transactionForm" onsubmit="submitTransaction(event)">
-                <div class="form-group">
-                    <label for="usdAmount">USD Amount:</label>
-                    <input type="number" id="usdAmount" class="form-control" placeholder="USD পরিমাণ লিখুন" required step="0.01" min="1">
+            <!-- History Page -->
+            <div id="historyPage" class="step-container">
+                <div class="step-header">
+                    <button class="back-button" onclick="showStep('mainMenu')">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div class="step-title">উইথড্র হিস্টোরি</div>
                 </div>
 
-                <div class="form-group">
-                    <label for="voletNumber">Your Volet:</label>
-                    <input type="text" id="voletNumber" class="form-control" placeholder="আপনার Volet নম্বর লিখুন" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="trxnId">Transaction ID:</label>
-                    <input type="text" id="trxnId" class="form-control" placeholder="লেনদেন আইডি লিখুন" required>
-                </div>
-
-                <button type="submit" class="btn">
-                    Submit <i class="fas fa-paper-plane"></i>
-                </button>
-            </form>
-        </div>
-
-        <!-- Volet to BDT - Step 3: Withdraw Details -->
-        <div id="voletStep3" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('voletStep2')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">উইথড্র করার তথ্য</div>
-            </div>
-
-            <div class="progress-bar">
-                <div class="progress-step completed">
-                    <div class="step-circle"><i class="fas fa-check"></i></div>
-                    <div class="step-text">অ্যাকাউন্ট কপি</div>
-                </div>
-                <div class="progress-step completed">
-                    <div class="step-circle"><i class="fas fa-check"></i></div>
-                    <div class="step-text">বিস্তারিত দিন</div>
-                </div>
-                <div class="progress-step active">
-                    <div class="step-circle">3</div>
-                    <div class="step-text">উইথড্র</div>
-                </div>
-            </div>
-
-            <!-- Transaction Summary -->
-            <div class="data-display" id="transactionSummary">
-                <!-- Data will be loaded here by JavaScript -->
-            </div>
-
-            <form id="withdrawForm" onsubmit="submitWithdraw(event)">
-                <div class="form-group">
-                    <label>Write Bkash/Nagad/Rocket:</label>
-                    <select id="paymentMethod" class="form-control" required>
-                        <option value="">পেমেন্ট মেথড নির্বাচন করুন</option>
-                        <option value="Bkash">Bkash</option>
-                        <option value="Nagad">Nagad</option>
-                        <option value="Rocket">Rocket</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Give your number:</label>
-                    <input type="text" id="paymentNumber" class="form-control" placeholder="আপনার মোবাইল নম্বর লিখুন" required pattern="[0-9]{11}" title="১১ ডিজিটের মোবাইল নম্বর লিখুন">
-                </div>
-
-                <button type="submit" class="btn btn-success">
-                    Successful <i class="fas fa-check-circle"></i>
-                </button>
-            </form>
-        </div>
-
-        <!-- Volet to BDT - Success Message -->
-        <div id="successMessage" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('mainMenu')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">সফল!</div>
-            </div>
-
-            <div style="text-align: center; padding: 50px 20px;">
-                <div style="font-size: 80px; color: #2ecc71; margin-bottom: 20px;">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h2 style="color: #2c3e50; margin-bottom: 15px;">Request Successfully Sent</h2>
-                <p style="color: #7f8c8d; margin-bottom: 30px;">
-                    আপনার রিকোয়েস্ট সফলভাবে পাঠানো হয়েছে। আমাদের টিম শীঘ্রই আপনার সাথে যোগাযোগ করবে।
-                </p>
-                
-                <!-- Database Display -->
-                <div class="data-display" id="databaseDisplay">
-                    <h3 style="color: #2c3e50; margin-bottom: 15px;">ডাটাবেসে সংরক্ষিত তথ্য:</h3>
-                    <div id="storedData">
-                        <!-- Data will be loaded here -->
+                <div class="history-header">
+                    <h3 style="color: #2c3e50;">আপনার লেনদেনের তালিকা</h3>
+                    <div>
+                        <span style="color: #7f8c8d; font-size: 14px;">মোট: </span>
+                        <span id="totalTransactions" style="font-weight: bold; color: #3498db;">0</span>
                     </div>
                 </div>
 
-                <button class="btn" onclick="showStep('mainMenu')" style="margin-top: 30px;">
+                <div class="history-filters">
+                    <button class="filter-btn active" onclick="filterHistory('all')">সব</button>
+                    <button class="filter-btn" onclick="filterHistory('pending')">পেন্ডিং</button>
+                    <button class="filter-btn" onclick="filterHistory('completed')">সম্পন্ন</button>
+                    <button class="filter-btn" onclick="filterHistory('last7days')">গত ৭ দিন</button>
+                </div>
+
+                <div class="history-container">
+                    <table class="history-table" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>তারিখ</th>
+                                <th>পরিমাণ</th>
+                                <th>পদ্ধতি</th>
+                                <th>স্ট্যাটাস</th>
+                                <th>আইডি</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- History data will be loaded here -->
+                        </tbody>
+                    </table>
+
+                    <div id="noHistoryMessage" class="no-history" style="display: none;">
+                        <div style="font-size: 60px; color: #ddd; margin-bottom: 20px;">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <h3 style="color: #7f8c8d; margin-bottom: 10px;">কোনো লেনদেন নেই</h3>
+                        <p>আপনি এখনো কোনো লেনদেন সম্পন্ন করেননি।</p>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="showStep('mainMenu')" style="margin-top: 20px;">
                     <i class="fas fa-home"></i> মেনুতে ফিরে যান
                 </button>
             </div>
-        </div>
 
-        <!-- Customer Care -->
-        <div id="customerCare" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('mainMenu')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">গ্রাহক সেবা</div>
+            <!-- Notification -->
+            <div class="notification" id="notification">
+                <span id="notificationText"></span>
             </div>
-
-            <div style="text-align: center; margin-bottom: 30px;">
-                <div style="font-size: 60px; color: #3498db; margin-bottom: 20px;">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <h2 style="color: #2c3e50; margin-bottom: 10px;">আমাদের সাথে যোগাযোগ করুন</h2>
-                <p style="color: #7f8c8d;">যেকোনো সমস্যা বা প্রশ্নের জন্য আমরা এখানে আছি</p>
-            </div>
-
-            <div class="customer-care-info">
-                <div class="contact-item">
-                    <div class="contact-icon">
-                        <i class="fas fa-phone"></i>
-                    </div>
-                    <div class="contact-text">
-                        <h4>ফোন নম্বর</h4>
-                        <p>+৮৮০ ১৭০০-১২৩৪৫৬</p>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div class="contact-icon">
-                        <i class="fas fa-envelope"></i>
-                    </div>
-                    <div class="contact-text">
-                        <h4>ইমেইল</h4>
-                        <p>support@paymentbot.com</p>
-                    </div>
-                </div>
-
-                <div class="contact-item">
-                    <div class="contact-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="contact-text">
-                        <h4>কাজের সময়</h4>
-                        <p>সকাল ৯টা - রাত ১১টা (সপ্তাহের ৭ দিন)</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- History Page -->
-        <div id="historyPage" class="step-container">
-            <div class="step-header">
-                <button class="back-button" onclick="showStep('mainMenu')">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="step-title">উইথড্র হিস্টোরি</div>
-            </div>
-
-            <div class="history-header">
-                <h3 style="color: #2c3e50;">আপনার লেনদেনের তালিকা</h3>
-                <div>
-                    <span style="color: #7f8c8d; font-size: 14px;">মোট: </span>
-                    <span id="totalTransactions" style="font-weight: bold; color: #3498db;">0</span>
-                </div>
-            </div>
-
-            <div class="history-filters">
-                <button class="filter-btn active" onclick="filterHistory('all')">সব</button>
-                <button class="filter-btn" onclick="filterHistory('pending')">পেন্ডিং</button>
-                <button class="filter-btn" onclick="filterHistory('completed')">সম্পন্ন</button>
-                <button class="filter-btn" onclick="filterHistory('last7days')">গত ৭ দিন</button>
-            </div>
-
-            <div class="history-container">
-                <table class="history-table" id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>তারিখ</th>
-                            <th>পরিমাণ</th>
-                            <th>পদ্ধতি</th>
-                            <th>স্ট্যাটাস</th>
-                            <th>আইডি</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <!-- History data will be loaded here -->
-                    </tbody>
-                </table>
-
-                <div id="noHistoryMessage" class="no-history" style="display: none;">
-                    <div style="font-size: 60px; color: #ddd; margin-bottom: 20px;">
-                        <i class="fas fa-history"></i>
-                    </div>
-                    <h3 style="color: #7f8c8d; margin-bottom: 10px;">কোনো লেনদেন নেই</h3>
-                    <p>আপনি এখনো কোনো লেনদেন সম্পন্ন করেননি।</p>
-                </div>
-            </div>
-
-            <button class="btn" onclick="showStep('mainMenu')" style="margin-top: 20px;">
-                <i class="fas fa-home"></i> মেনুতে ফিরে যান
-            </button>
-        </div>
-
-        <!-- Notification -->
-        <div class="notification" id="notification">
-            <span id="notificationText"></span>
         </div>
     </div>
 
-    <!-- Main Application JavaScript -->
     <script>
         // Global variables
         let currentUser = null;
@@ -1216,6 +1170,144 @@
             timestamp: '',
             status: 'pending'
         };
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDvzDVl5CCA-K3WX2NaNBzHYNi055K0t8k",
+            authDomain: "payment-bot-system.firebaseapp.com",
+            projectId: "payment-bot-system",
+            storageBucket: "payment-bot-system.firebasestorage.app",
+            messagingSenderId: "157613986294",
+            appId: "1:157613986294:web:04497dc2f31d107bf437d7",
+            measurementId: "G-X7SNQ4WQD8"
+        };
+
+        // Initialize Firebase
+        let auth, db;
+        
+        function initializeFirebase() {
+            try {
+                // Initialize Firebase
+                firebase.initializeApp(firebaseConfig);
+                
+                // Initialize services
+                auth = firebase.auth();
+                db = firebase.firestore();
+                
+                console.log("Firebase initialized successfully");
+                
+                // Set up auth state listener
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        // User is signed in
+                        currentUser = {
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || "User",
+                            avatarText: getInitials(user.displayName || user.email)
+                        };
+                        
+                        // Load additional user data
+                        loadUserData(user.uid);
+                        
+                        // Hide loading and show main menu
+                        hideLoading();
+                        showMainMenu();
+                    } else {
+                        // User is signed out
+                        currentUser = null;
+                        
+                        // Hide loading and show auth page
+                        hideLoading();
+                        showAuthPage();
+                    }
+                });
+                
+                // If auth state doesn't trigger within 3 seconds, check manually
+                setTimeout(() => {
+                    if (auth.currentUser) {
+                        // User is already logged in
+                        const user = auth.currentUser;
+                        currentUser = {
+                            id: user.uid,
+                            email: user.email,
+                            name: user.displayName || "User",
+                            avatarText: getInitials(user.displayName || user.email)
+                        };
+                        
+                        hideLoading();
+                        showMainMenu();
+                    } else {
+                        // No user logged in
+                        hideLoading();
+                        showAuthPage();
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showError("Firebase লোড করতে সমস্যা: " + error.message);
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const retryBtn = document.getElementById('retryBtn');
+            
+            errorDiv.innerHTML = `
+                <strong>ত্রুটি:</strong><br>
+                ${message}<br><br>
+                <small>সমাধান করুন:</small><br>
+                1. ইন্টারনেট কানেকশন চেক করুন<br>
+                2. পেজ রিফ্রেশ করুন<br>
+                3. Firebase কনফিগারেশন চেক করুন
+            `;
+            errorDiv.style.display = 'block';
+            retryBtn.style.display = 'block';
+        }
+
+        // Hide loading screen
+        function hideLoading() {
+            document.getElementById('firebaseLoading').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }
+
+        // Load user data from Firestore
+        async function loadUserData(userId) {
+            try {
+                const userDoc = await db.collection('users').doc(userId).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    currentUser = {
+                        ...currentUser,
+                        ...userData,
+                        avatarText: getInitials(userData.name || userData.email)
+                    };
+                    
+                    // Update UI
+                    document.getElementById('welcomeMessage').textContent = 
+                        'স্বাগতম, ' + currentUser.name;
+                    document.getElementById('userAvatar').textContent = 
+                        currentUser.avatarText;
+                }
+            } catch (error) {
+                console.error("Error loading user data:", error);
+            }
+        }
+
+        // Initialize Firebase when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFirebase();
+            
+            // Retry button event
+            document.getElementById('retryBtn').addEventListener('click', function() {
+                document.getElementById('errorMessage').style.display = 'none';
+                this.style.display = 'none';
+                document.querySelector('.loading-text').textContent = 'পুনরায় চেষ্টা করা হচ্ছে...';
+                initializeFirebase();
+            });
+        });
 
         // Switch between signin and signup tabs
         function switchAuthTab(tab) {
@@ -1237,7 +1329,7 @@
             }
         }
 
-        // Sign up function with Firebase
+        // Sign up function
         async function signUp() {
             const name = document.getElementById('signupName').value;
             const email = document.getElementById('signupEmail').value;
@@ -1265,16 +1357,11 @@
                 showNotification('অ্যাকাউন্ট তৈরি হচ্ছে...', 'info');
                 
                 // Create user with Firebase Authentication
-                const userCredential = await window.firebase.createUserWithEmailAndPassword(
-                    window.firebase.auth, 
-                    email, 
-                    password
-                );
-                
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
                 
                 // Update profile
-                await window.firebase.updateProfile(user, {
+                await user.updateProfile({
                     displayName: name
                 });
                 
@@ -1283,14 +1370,11 @@
                     name: name,
                     email: email,
                     phone: phone,
-                    createdAt: window.firebase.serverTimestamp(),
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                     avatarText: getInitials(name)
                 };
                 
-                await window.firebase.setDoc(
-                    window.firebase.doc(window.firebase.db, "users", user.uid),
-                    userData
-                );
+                await db.collection('users').doc(user.uid).set(userData);
                 
                 showNotification('সাইন আপ সফল! স্বাগতম ' + name, 'success');
                 
@@ -1310,7 +1394,7 @@
             }
         }
 
-        // Sign in function with Firebase
+        // Sign in function
         async function signIn() {
             const email = document.getElementById('signinEmail').value;
             const password = document.getElementById('signinPassword').value;
@@ -1324,11 +1408,7 @@
             try {
                 showNotification('সাইন ইন হচ্ছে...', 'info');
                 
-                await window.firebase.signInWithEmailAndPassword(
-                    window.firebase.auth,
-                    email,
-                    password
-                );
+                await auth.signInWithEmailAndPassword(email, password);
                 
                 // User will be handled by auth state listener
                 
@@ -1351,7 +1431,7 @@
         // Logout function
         async function logout() {
             try {
-                await window.firebase.signOut(window.firebase.auth);
+                await auth.signOut();
                 showNotification('সফলভাবে লগআউট হয়েছে', 'info');
             } catch (error) {
                 console.error("Logout error:", error);
@@ -1405,15 +1485,11 @@
                 showNotification('হিস্টোরি লোড হচ্ছে...', 'info');
                 
                 // Get transactions from Firestore
-                const transactionsRef = window.firebase.collection(window.firebase.db, "transactions");
-                const q = window.firebase.query(
-                    transactionsRef, 
-                    window.firebase.where("userId", "==", currentUser.id)
-                );
+                const querySnapshot = await db.collection('transactions')
+                    .where('userId', '==', currentUser.id)
+                    .get();
                 
-                const querySnapshot = await window.firebase.getDocs(q);
                 const transactions = [];
-                
                 querySnapshot.forEach((doc) => {
                     transactions.push({
                         id: doc.id,
@@ -1603,13 +1679,12 @@
                 // Get form values
                 currentTransaction.paymentMethod = document.getElementById('paymentMethod').value;
                 currentTransaction.paymentNumber = document.getElementById('paymentNumber').value;
-                currentTransaction.timestamp = window.firebase.serverTimestamp();
+                currentTransaction.timestamp = firebase.firestore.FieldValue.serverTimestamp();
                 
                 showNotification('ডাটাবেসে সংরক্ষণ হচ্ছে...', 'info');
                 
                 // Save to Firestore
-                const transactionsRef = window.firebase.collection(window.firebase.db, "transactions");
-                const docRef = await window.firebase.addDoc(transactionsRef, currentTransaction);
+                const docRef = await db.collection('transactions').add(currentTransaction);
                 
                 console.log("Transaction saved with ID: ", docRef.id);
                 
@@ -1669,8 +1744,6 @@
         // Show user profile
         function showUserProfile() {
             if (!currentUser) return;
-            
-            // You can create a profile modal here
             showNotification('প্রোফাইল ফিচারটি শীঘ্রই আসছে!', 'info');
         }
 
